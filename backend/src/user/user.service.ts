@@ -2,10 +2,11 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './dto/create-user.dto';
 import bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
-    constructor(private _prismaService: PrismaService) {}
+    constructor(private _prismaService: PrismaService, private _jwtService: JwtService) {}
 
     async register(dto: RegisterDto) {
         const existingUser = await this._prismaService.user.findUnique({
@@ -27,9 +28,7 @@ export class UserService {
             }
         });
 
-        return {
-            message: 'Поздравляю с регистрацией'
-        };
+        return this.generateToken(user.id, user.email);
     }
 
     async login(dto: LoginDto) {
@@ -47,8 +46,17 @@ export class UserService {
             throw new UnauthorizedException('Неверный логин или пароль');
         }
 
-        return {
-            message: 'Вы успешно авторизовались'
+        return this.generateToken(user.id, user.email);
+    }
+
+    generateToken(userId: string, email: string) {
+        const payload = {
+            sub: userId,
+            email
         };
+
+        return {
+            access_token: this._jwtService.sign(payload)
+        }
     }
 }
