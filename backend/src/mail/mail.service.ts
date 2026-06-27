@@ -18,4 +18,21 @@ export class MailService {
             html: htmlContent
         });
     }
+
+    async sendPasswordResetCode(to: string, passwordResetCode: string) {
+        const htmlContent = ` 
+            <h1>Создан временный код</h1> 
+            <p>Ваш код для восстановления пароля:</p>
+            <h1 style="letter-spacing: 5px;">
+            ${passwordResetCode}
+            </h1>
+        `;
+
+        await this.mailerService.sendMail({
+            from: 'Goodwin',
+            to,
+            subject: 'Код сброса пароля',
+            html: htmlContent            
+        });
+    }
 }
