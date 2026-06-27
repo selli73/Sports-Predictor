@@ -3,10 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './dto/create-user.dto';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class UserService {
-    constructor(private _prismaService: PrismaService, private _jwtService: JwtService) {}
+    constructor(private _prismaService: PrismaService, private _jwtService: JwtService, private _mailService: MailService) {}
 
     async register(dto: RegisterDto) {
         const existingUser = await this._prismaService.user.findUnique({
@@ -27,6 +28,8 @@ export class UserService {
                 phone: dto.phone
             }
         });
+
+        this._mailService.sendWelcomeEmail(user.email, user.name ?? '');
 
         return this.generateToken(user.id, user.email);
     }
