@@ -32,7 +32,7 @@ export class UserService {
 
         this._mailService.sendWelcomeEmail(user.email, user.name ?? '');
 
-        return this.generateToken(user.id, user.email);
+        return this.generateToken(user.id, user.email, user.role);
     }
 
     async login(dto: LoginDto) {
@@ -50,13 +50,14 @@ export class UserService {
             throw new UnauthorizedException('Неверный логин или пароль');
         }
 
-        return this.generateToken(user.id, user.email);
+        return this.generateToken(user.id, user.email, user.role);
     }
 
-    generateToken(userId: string, email: string) {
+    generateToken(userId: string, email: string, role: string) {
         const payload = {
             sub: userId,
-            email
+            email,
+            role
         };
 
         return {

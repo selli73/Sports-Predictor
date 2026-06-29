@@ -6,6 +6,9 @@ import { ChangePasswordDto, ForgotPasswordDto, PasswordResetCodeVerificationDto,
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { IJwtUserRequest, IPasswordResetJwtUserRequest } from './typings';
 import { PasswordResetJwt } from './guards/jwt-passwordReset.guard';
+import { Roles } from '../roles/decorators/roles.decorator';
+import { Role } from '@prisma/client';
+import { RolesGuard } from '../roles/guards/roles.guard';
 
 @Controller('user')
 export class UserController {
@@ -28,7 +31,7 @@ export class UserController {
   @Patch('change-password')
   @UseGuards(JwtAuthGuard) @ApiBearerAuth()
   @ApiOperation({ summary: 'User password change' }) @ApiResponse({ status: 200, description: 'The user password has been successfully changed' })
-   @ApiResponse({ status: 401, description: 'Unauthorized' }) 
+  @ApiResponse({ status: 401, description: 'Unauthorized' }) 
   changePassword(@Req() req: IJwtUserRequest, @Body() dto: ChangePasswordDto) {
     return this.userService.changePassword(req.user.userId, dto.oldPassword, dto.newPassword);
   }

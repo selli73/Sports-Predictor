@@ -18,7 +18,13 @@ model User {
   name String?
   phone String?
   passwordResetCode PasswordResetCode?
+  role Role @default(USER)
   createdAt DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 model PasswordResetCode {
