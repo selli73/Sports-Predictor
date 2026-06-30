@@ -36,3 +36,55 @@ model PasswordResetCode {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Team {
+  id String @id @default(uuid())
+  apiId String @unique
+  name String
+  country String?
+  logo String?
+  players Player[]
+
+  teamAMatches Match[] @relation("teamA")
+  teamBMatches Match[] @relation("teamB")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Player {
+  id String @id @default(uuid())
+  apiId String @unique
+  firstName String
+  lastName String
+  age Int?
+  nationality String?
+  position String?
+  photo String?
+
+  teamId String
+  team Team @relation(fields: [teamId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Match {
+  id String @id @default(uuid())
+  apiId String @unique
+
+  teamAId String
+  teamBId String
+
+  teamA Team @relation("teamA", fields: [teamAId], references: [id])
+  teamB Team @relation("teamB", fields: [teamBId], references: [id])
+
+  teamAScore Int?
+  teamBScore Int?
+
+  status String?
+  startAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
