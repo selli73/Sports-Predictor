@@ -22,6 +22,7 @@
   "dependencies": {
     "@google/genai": "^2.10.0",
     "@nestjs-modules/mailer": "^2.3.7",
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -32,7 +33,9 @@
     "@nestjs/swagger": "^11.4.4",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "axios": "^1.18.1",
     "bcrypt": "^6.0.0",
+    "cheerio": "^1.2.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "nanoid": "^5.1.16",
@@ -40,7 +43,8 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "uefa-api": "^1.0.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
