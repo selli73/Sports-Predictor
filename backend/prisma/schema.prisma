@@ -39,14 +39,13 @@ model PasswordResetCode {
 
 model Team {
   id String @id @default(uuid())
-  apiId String @unique
-  name String
+  name String @unique
   country String?
   logo String?
   players Player[]
 
-  teamAMatches Match[] @relation("teamA")
-  teamBMatches Match[] @relation("teamB")
+  homeTeamMatches Match[] @relation("homeTeam")
+  awayTeamMatches Match[] @relation("awayTeam")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -71,16 +70,15 @@ model Player {
 
 model Match {
   id String @id @default(uuid())
-  apiId String @unique
 
-  teamAId String
-  teamBId String
+  homeTeamId String
+  awayTeamId String
 
-  teamA Team @relation("teamA", fields: [teamAId], references: [id])
-  teamB Team @relation("teamB", fields: [teamBId], references: [id])
+  homeTeam Team @relation("homeTeam", fields: [homeTeamId], references: [id])
+  awayTeam Team @relation("awayTeam", fields: [awayTeamId], references: [id])
 
-  teamAScore Int?
-  teamBScore Int?
+  homeTeamScore Int?
+  awayTeamScore Int?
 
   status String?
   startAt DateTime

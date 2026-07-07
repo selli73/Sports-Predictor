@@ -7,11 +7,6 @@ export class FootballController {
 
   @Get('matches')
   getUpcomingMatches() {
-    //return this.footballService.getWorldCupMatches();
-  }
-
-  @Get('inf')
-  getInformation() {
-    return this.footballService.getInformation();
+    return this.footballService.scrapeFlashScore();``
   }
 }
