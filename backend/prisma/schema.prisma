@@ -70,7 +70,7 @@ model Player {
 
 model Match {
   id String @id @default(uuid())
-
+  matchKey String @unique
   homeTeamId String
   awayTeamId String
 

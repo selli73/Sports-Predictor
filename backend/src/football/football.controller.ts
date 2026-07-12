@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { FootballService } from './football.service';
 
 @Controller('football')
@@ -7,6 +7,6 @@ export class FootballController {
 
   @Get('matches')
   getUpcomingMatches() {
-    return this.footballService.scrapeFlashScore();``
+    return this.footballService.scrapeFlashScoreWorldChempionship();
   }
 }

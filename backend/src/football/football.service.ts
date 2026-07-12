@@ -1,83 +1,93 @@
-import { HttpService } from '@nestjs/axios';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { isAxiosError } from 'axios';
-import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
-import { load } from 'cheerio';
 import puppeteer from 'puppeteer';
-
+import { load } from 'cheerio';
 @Injectable()
 export class FootballService {
-    constructor(private _prismaService: PrismaService, private readonly _configService: ConfigService, private readonly httpService: HttpService) {}
+    constructor(private _prismaService: PrismaService, private readonly _configService: ConfigService) {}
 
-
-    async scrapeFlashScore() {
+    async scrapeFlashScoreWorldChempionship() {
         const browser = await puppeteer.launch({
-            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            executablePath: '/usr/bin/google-chrome',
             headless: false,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ]
         });
-
         try {
-            const page = await browser.newPage();
+            const page = await browser.newPage();    
             const url = 'https://www.flashscore.com/football/world/world-championship/';
             await page.goto(url, {
                 waitUntil: 'networkidle2'
             });
+
+            await page.waitForSelector('.event__match');
+
             const html = await page.content();
-
             const cheer = load(html);
-            const scrapedMatches: { homeTeam: string; awayTeam: string; timeStr: string }[] = [];
-            cheer('.event__match').each((index, element) => {
-                const homeTeam = cheer(element).find('.event__participant--home').text().trim();
-                const awayTeam = cheer(element).find('.event__participant--away').text().trim();
-                const timeStr = cheer(element).find('.event__time').text().trim();
 
+            const scrapedMatches: { homeTeam: string, awayTeam: string, startDate: string }[] = [];
+            const latestScoresSection = cheer('h2:contains("Latest Scores")').closest('section');
+            cheer('[id^="g_1_"]').each((index, element) => {
+
+                if (latestScoresSection.length && latestScoresSection.has(element).length > 0) {
+                    return;
+                }
+
+                const homeBlock = cheer(element).find('.event__homeParticipant');
+                const awayBlock = cheer(element).find('.event__awayParticipant');
+
+                const homeTeam = homeBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
+                const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim()
+                const startDate = cheer(element).find('span[data-testid="wcl-stageTime"]').text().trim();
                 if (homeTeam && awayTeam) {
                     scrapedMatches.push({
-                        homeTeam,
-                        awayTeam,
-                        timeStr
-                    });
+                    homeTeam,
+                    awayTeam,
+                    startDate
+                });
                 }
-                
-            })
-            console.log('Найдено матчей: ',scrapedMatches.length);
-
-            for (const match of scrapedMatches) {
+            });
+            
+            for (const element of scrapedMatches) {
                 const homeTeamEntity = await this._prismaService.team.upsert({
-                    where: { name: match.homeTeam },
-                    update: {  },
-                    create: { name: match.homeTeam,  }
+                    where: { name: element.homeTeam },
+                    update: {},
+                    create: { name: element.homeTeam }
                 });
-
                 const awayTeamEntity = await this._prismaService.team.upsert({
-                    where: { name: match.awayTeam },
-                    update: {  },
-                    create: { name: match.awayTeam }
+                    where: { name: element.awayTeam },
+                    update: {},
+                    create: { name: element.awayTeam }
                 });
 
-                const matchId = `${homeTeamEntity.id}-${awayTeamEntity.id}-2026`;
-                const [dayMonth, time] = match.timeStr.split(' ');
+                const [dayMonth, time] = element.startDate.split(' ');
                 const [day, month] = dayMonth.split('.');
                 const [hours, minutes] = time.split(':');
+                const matchKey = `${homeTeamEntity.id}-${awayTeamEntity.id}-2026-${month}-${day}`;
                 const matchDate = new Date(2026, Number(month) - 1, Number(day), Number(hours), Number(minutes));
-                await this._prismaService.match.upsert({
-                    where: { id: matchId },
-                    update: {},
-                    create: { homeTeamId: homeTeamEntity.id, awayTeamId: awayTeamEntity.id, startAt: matchDate, status: 'UPCOMING' }
-                });
 
-                return {
-                    success: true,
-                    count: scrapedMatches.length
-                };
+                await this._prismaService.match.upsert({
+                    where: { matchKey },
+                    update: { },
+                    create: {
+                        matchKey,
+                        homeTeamId: homeTeamEntity.id,
+                        awayTeamId: awayTeamEntity.id,
+                        status: 'UPCOMING',
+                        startAt: matchDate,
+                    }
+                });
             }
 
+            return {
+                success: true,
+                count: scrapedMatches.length
+            };
         } catch(error) {
             console.log(error);
-
         } finally {
             await browser.close();
         }
