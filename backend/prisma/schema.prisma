@@ -12,14 +12,15 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
-  email String @unique
-  password String
-  name String?
-  phone String?
+  id                String             @id @default(uuid())
+  email             String             @unique
+  password          String
+  name              String?
+  phone             String?
   passwordResetCode PasswordResetCode?
-  role Role @default(USER)
-  createdAt DateTime @default(now())
+  role              Role               @default(USER)
+  predictions       Prediction[]
+  createdAt         DateTime           @default(now())
 }
 
 enum Role {
@@ -28,20 +29,20 @@ enum Role {
 }
 
 model PasswordResetCode {
-  id String @id @default(uuid())
-  userId String @unique
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   resetCodeHash String
-  expiryDate DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  expiryDate    DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Team {
-  id String @id @default(uuid())
-  name String @unique
+  id      String   @id @default(uuid())
+  name    String   @unique
   country String?
-  logo String?
+  logo    String?
   players Player[]
 
   homeTeamMatches Match[] @relation("homeTeam")
@@ -52,25 +53,25 @@ model Team {
 }
 
 model Player {
-  id String @id @default(uuid())
-  apiId String @unique
-  firstName String
-  lastName String
-  age Int?
+  id          String  @id @default(uuid())
+  apiId       String  @unique
+  firstName   String
+  lastName    String
+  age         Int?
   nationality String?
-  position String?
-  photo String?
+  position    String?
+  photo       String?
 
   teamId String
-  team Team @relation(fields: [teamId], references: [id])
-  
+  team   Team   @relation(fields: [teamId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Match {
-  id String @id @default(uuid())
-  matchKey String @unique
+  id         String @id @default(uuid())
+  matchKey   String @unique
   homeTeamId String
   awayTeamId String
 
@@ -80,9 +81,30 @@ model Match {
   homeTeamScore Int?
   awayTeamScore Int?
 
-  status String?
+  status  String?
   startAt DateTime
+
+  predictions Prediction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Prediction {
+  id        String            @id @default(uuid())
+  userId    String
+  matchId   String
+  user      User              @relation(fields: [userId], references: [id])
+  match     Match             @relation(fields: [matchId], references: [id])
+  outcome   PredictionOutcome
+  pointsWon Int               @default(0)
+  createAt  DateTime          @default(now())
+
+  @@unique([userId, matchId])
+}
+
+enum PredictionOutcome {
+  HOME_WIN
+  AWAY_WIN
+  DRAW
 }
