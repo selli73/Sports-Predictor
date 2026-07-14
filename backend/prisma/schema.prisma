@@ -81,13 +81,22 @@ model Match {
   homeTeamScore Int?
   awayTeamScore Int?
 
-  status  String?
+  status  MatchStatus
   startAt DateTime
 
   predictions Prediction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum MatchStatus {
+  UPCOMING
+  IN_PROGRESS
+  HALF_TIME
+  EXTRA_TIME
+  PENALTIES
+  FINISHED
 }
 
 model Prediction {

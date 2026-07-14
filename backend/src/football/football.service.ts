@@ -30,6 +30,7 @@ export class FootballService {
 
             const scrapedMatches: { homeTeam: string, awayTeam: string, startDate: string }[] = [];
             const latestScoresSection = cheer('h2:contains("Latest Scores")').closest('section');
+            const todayMatchesSection = cheer(`h2:contains(Today's Matches)`).closest('section');
             cheer('[id^="g_1_"]').each((index, element) => {
 
                 if (latestScoresSection.length && latestScoresSection.has(element).length > 0) {
@@ -40,8 +41,17 @@ export class FootballService {
                 const awayBlock = cheer(element).find('.event__awayParticipant');
 
                 const homeTeam = homeBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
-                const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim()
-                const startDate = cheer(element).find('span[data-testid="wcl-stageTime"]').text().trim();
+                const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
+
+                let startDate: string;
+                const now = new Date();
+                if (todayMatchesSection.length && todayMatchesSection.has(element).length > 0) {
+                    startDate = now.getDate() + '.' + (now.getMonth() + 1 > 9? now.getMonth() + 1 : '0'+ (now.getMonth() + 1)) + '. ' + cheer(element).find('span[data-testid="wcl-stageTime"]').text().trim();
+                } else {
+                    startDate = cheer(element).find('span[data-testid="wcl-stageTime"]').text().trim();                
+                }
+                
+                
                 if (homeTeam && awayTeam) {
                     scrapedMatches.push({
                     homeTeam,
@@ -51,6 +61,8 @@ export class FootballService {
                 }
             });
             
+            console.log(scrapedMatches);
+
             for (const element of scrapedMatches) {
                 const homeTeamEntity = await this._prismaService.team.upsert({
                     where: { name: element.homeTeam },
