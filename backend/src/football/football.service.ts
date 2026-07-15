@@ -3,10 +3,46 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import puppeteer from 'puppeteer';
 import { load } from 'cheerio';
+import { MatchStatus } from '@prisma/client';
+import { Cron, CronExpression } from '@nestjs/schedule';
+
 @Injectable()
 export class FootballService {
     constructor(private _prismaService: PrismaService, private readonly _configService: ConfigService) {}
 
+    async getUpcomingMatches() {
+        const matches = await this._prismaService.match.findMany({
+            where: { status: MatchStatus.UPCOMING },
+            select: {
+                id: true,
+                startAt: true,
+                homeTeam: {
+                    select: {
+                        name: true
+                    }
+                },
+                awayTeam: {
+                    select: {
+                        name: true
+                    }
+                }
+            }
+        });
+
+        const result = matches.map((match) => {
+            return {
+                matchId: match.id,
+                startAt: match.startAt,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam
+            };
+        });
+
+        return result;
+    }
+
+
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
     async scrapeFlashScoreWorldChempionship() {
         const browser = await puppeteer.launch({
             executablePath: '/usr/bin/google-chrome',
@@ -18,7 +54,7 @@ export class FootballService {
         });
         try {
             const page = await browser.newPage();    
-            const url = 'https://www.flashscore.com/football/world/world-championship/';
+            const url = this._configService.getOrThrow('URL_WORLD_CUP_2026');
             await page.goto(url, {
                 waitUntil: 'networkidle2'
             });

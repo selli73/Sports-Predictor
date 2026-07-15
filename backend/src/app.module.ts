@@ -6,10 +6,12 @@ import { MailModule } from './mail/mail.module';
 import { GeminiModule } from './gemini/gemini.module';
 import { FootballModule } from './football/football.module';
 import { PredictionsModule } from './predictions/predictions.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [ConfigModule.forRoot({
     isGlobal: true
-  }), PrismaModule, UserModule, MailModule, GeminiModule, FootballModule, PredictionsModule],
+  }), ScheduleModule.forRoot(),
+  PrismaModule, UserModule, MailModule, GeminiModule, FootballModule, PredictionsModule],
 })
 export class AppModule {}
