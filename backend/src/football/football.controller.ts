@@ -6,7 +6,12 @@ export class FootballController {
   constructor(private readonly footballService: FootballService) {}
 
   @Get('matches')
-  getUpcomingMatches() {
-    return this.footballService.scrapeFlashScoreWorldChempionship();
+  saveUpcomingMatches() {
+    return this.footballService.scrapeFlashScoreMatchesUpcomingWorldChempionship();
+  }
+
+  @Get('finishedMatch')
+  saveFinishedMatches() {
+    return this.footballService.scrapeFlashScoreMatchesFinishedWorldChempionship();
   }
 }

@@ -5,6 +5,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -70,25 +71,31 @@ model Player {
 }
 
 model Match {
-  id            String    @id @default(uuid())
-  matchKey      String    @unique
-  homeTeamId    String
-  awayTeamId    String
+  id                String    @id @default(uuid())
+  matchKey          String    @unique
 
-  homeTeam      Team      @relation("homeTeam", fields: [homeTeamId], references: [id])
-  awayTeam      Team      @relation("awayTeam", fields: [awayTeamId], references: [id])
+  homeTeamId        String
+  awayTeamId        String
 
-  homeTeamScore Int?
-  awayTeamScore Int?
+  homeTeam          Team      @relation("homeTeam", fields: [homeTeamId], references: [id])
+  awayTeam          Team      @relation("awayTeam", fields: [awayTeamId], references: [id])
 
-  status        MatchStatus
-  startAt       DateTime
+  homeTeamScore     Int?
+  awayTeamScore     Int?
 
-  predictions   Prediction[]
+  homePenaltyScore  Int?
+  awayPenaltyScore  Int?
+
+  finishType        MatchFinishType @default(REGULAR)
+
+  status            MatchStatus
+  startAt           DateTime
+
+  predictions       Prediction[]
   matchAIPrediction MatchAIPrediction[]
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 enum MatchStatus {
@@ -98,6 +105,11 @@ enum MatchStatus {
   EXTRA_TIME
   PENALTIES
   FINISHED
+}
+
+enum MatchFinishType {
+  REGULAR
+  PENALTIES
 }
 
 model MatchAIPrediction {

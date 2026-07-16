@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import puppeteer from 'puppeteer';
 import { load } from 'cheerio';
-import { MatchStatus } from '@prisma/client';
+import { MatchFinishType, MatchStatus } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
@@ -43,7 +43,7 @@ export class FootballService {
 
 
     @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-    async scrapeFlashScoreWorldChempionship() {
+    async scrapeFlashScoreMatchesUpcomingWorldChempionship() {
         const browser = await puppeteer.launch({
             executablePath: '/usr/bin/google-chrome',
             headless: false,
@@ -58,8 +58,6 @@ export class FootballService {
             await page.goto(url, {
                 waitUntil: 'networkidle2'
             });
-
-            await page.waitForSelector('.event__match');
 
             const html = await page.content();
             const cheer = load(html);
@@ -96,22 +94,20 @@ export class FootballService {
                 });
                 }
             });
-            
-            console.log(scrapedMatches);
 
-            for (const element of scrapedMatches) {
+            for (const match of scrapedMatches) {
                 const homeTeamEntity = await this._prismaService.team.upsert({
-                    where: { name: element.homeTeam },
+                    where: { name: match.homeTeam },
                     update: {},
-                    create: { name: element.homeTeam }
+                    create: { name: match.homeTeam }
                 });
                 const awayTeamEntity = await this._prismaService.team.upsert({
-                    where: { name: element.awayTeam },
+                    where: { name: match.awayTeam },
                     update: {},
-                    create: { name: element.awayTeam }
+                    create: { name: match.awayTeam }
                 });
 
-                const [dayMonth, time] = element.startDate.split(' ');
+                const [dayMonth, time] = match.startDate.split(' ');
                 const [day, month] = dayMonth.split('.');
                 const [hours, minutes] = time.split(':');
                 const matchKey = `${homeTeamEntity.id}-${awayTeamEntity.id}-2026-${month}-${day}`;
@@ -138,6 +134,117 @@ export class FootballService {
             console.log(error);
         } finally {
             await browser.close();
+        }
+    }
+
+
+    async scrapeFlashScoreMatchesFinishedWorldChempionship() {
+        
+        const browser = await puppeteer.launch({
+            headless: false,
+            executablePath: '/usr/bin/google-chrome',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ]
+        });
+        
+        try {            
+            const page = await browser.newPage();    
+            const url = this._configService.getOrThrow('URL_ALL_WORLD_CUP_MATCHES_2026');
+            
+            await page.goto(url, {
+                waitUntil: 'networkidle2'
+            });
+
+            const html = await page.content();
+            
+            const $ = load(html);
+
+            const scrapedMatches: { homeTeam: string, awayTeam: string, startDate: string, scoreHome: number, scoreAway: number, homePenaltyScore: string | null, awayPenaltyScore: string | null, penaltiesPlayed: boolean}[] = [];
+            $('div[id^="g_1_"]').each((index, element) => {
+
+                const homeBlock = $(element).find('.event__homeParticipant');
+                const awayBlock = $(element).find('.event__awayParticipant');
+
+                const scoreHome = Number($(element).find('.event__score--home').contents().first().text().trim());
+                const scoreAway = Number($(element).find('.event__score--away').contents().first().text().trim());
+                const homePenaltyScore = $(element).find('.event__score--home sup').text().replace(/[()]/g, '');
+                const awayPenaltyScore = $(element).find('.event__score--away sup').text().replace(/[()]/g, '');
+                const penaltiesPlayed = homePenaltyScore.length > 0 && awayPenaltyScore.length > 0;
+                
+                const homeTeam = homeBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
+                const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
+
+                const startDate = $(element).find('span[data-testid="wcl-stageTime"]').text().trim().replace(/[A-Za-z]+/g, '');
+                if (homeTeam && awayTeam) {
+                    scrapedMatches.push({
+                        homeTeam,
+                        awayTeam,
+                        startDate,
+                        scoreHome,
+                        scoreAway,
+                        homePenaltyScore,
+                        awayPenaltyScore,
+                        penaltiesPlayed
+                    });
+                }
+            })
+
+            for (const match of scrapedMatches) {
+                const homeTeamEntity = await this._prismaService.team.upsert({
+                    where: {
+                        name: match.homeTeam
+                    },
+                    create: {
+                        name: match.homeTeam                        
+                    },
+                    update: { }
+                });
+
+                const awayTeamEntity = await this._prismaService.team.upsert({
+                    where: {
+                        name: match.awayTeam
+                    },
+                    create: {
+                        name: match.awayTeam
+                    },
+                    update: { }
+                });
+
+                const [date, time] = match.startDate.split(' ');
+                const [day, month] = date.split('.');
+                const [hours, minutes] = time.split(':');
+                const matchKey = `${homeTeamEntity.id}-${awayTeamEntity.id}-2026-${month}-${day}`;
+                const matchDate = new Date(2026, Number(month) - 1, Number(day), Number(hours), Number(minutes));
+
+                await this._prismaService.match.upsert({
+                    where: { matchKey },
+                    create: {
+                        matchKey,
+                        homeTeamId: homeTeamEntity.id,
+                        awayTeamId: awayTeamEntity.id,
+                        status: MatchStatus.FINISHED,
+                        startAt: matchDate,
+                        homeTeamScore: match.scoreHome,
+                        awayTeamScore: match.scoreAway,
+                        homePenaltyScore: match.penaltiesPlayed ? Number(match.homePenaltyScore) : null,
+                        awayPenaltyScore: match.penaltiesPlayed ? Number(match.awayPenaltyScore) : null,
+                        finishType: match.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR                                    
+                    },
+                    update: {
+                        homeTeamScore: match.scoreHome,
+                        awayTeamScore: match.scoreAway,
+                        homePenaltyScore: match.penaltiesPlayed ? Number(match.homePenaltyScore) : null,
+                        awayPenaltyScore: match.penaltiesPlayed ? Number(match.awayPenaltyScore) : null,
+                        finishType: match.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR
+                    }
+                })
+            }            
+        } catch(error) {
+            console.log(error);
+        } finally {
+            browser.close();
         }
     }
 }
