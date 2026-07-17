@@ -5,12 +5,12 @@ import { FootballService } from './football.service';
 export class FootballController {
   constructor(private readonly footballService: FootballService) {}
 
-  @Get('matches')
+  @Get('upcomingMatches')
   saveUpcomingMatches() {
     return this.footballService.scrapeFlashScoreMatchesUpcomingWorldChempionship();
   }
 
-  @Get('finishedMatch')
+  @Get('finishedMatches')
   saveFinishedMatches() {
     return this.footballService.scrapeFlashScoreMatchesFinishedWorldChempionship();
   }

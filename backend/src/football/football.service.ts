@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import puppeteer from 'puppeteer';
 import { load } from 'cheerio';
-import { MatchFinishType, MatchStatus } from '@prisma/client';
+import { MatchFinishType, MatchStatus, MatchWinner } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
@@ -18,25 +18,130 @@ export class FootballService {
                 startAt: true,
                 homeTeam: {
                     select: {
+                        id: true,
                         name: true
                     }
                 },
                 awayTeam: {
                     select: {
+                        id: true,
                         name: true
                     }
                 }
+
             }
         });
 
-        const result = matches.map((match) => {
+        const result = await Promise.all(matches.map(async (match) => {
+            const quantityWinHome = await this._prismaService.match.count({
+                where: {
+                    status: MatchStatus.FINISHED,
+                    OR: [
+                        {
+                            homeTeamId: match.homeTeam.id,
+                            winner: MatchWinner.HOME
+                        },
+                        {
+                            awayTeamId: match.homeTeam.id,
+                            winner: MatchWinner.AWAY
+                        },                        
+                    ]
+                }
+            });
+
+            const quanttyLossesHome = await this._prismaService.match.count({
+                where: {
+                    status: MatchStatus.FINISHED,
+                    OR: [
+                        {
+                            homeTeamId: match.homeTeam.id,
+                            winner: MatchWinner.AWAY
+                        },
+                        {
+                            awayTeamId: match.homeTeam.id,
+                            winner: MatchWinner.HOME
+                        }
+                    ]
+                }
+            });
+
+            const quantityDraftHome = await this._prismaService.match.count({
+                where: {
+                    status: MatchStatus.FINISHED,
+                    OR: [
+                        {
+                            homeTeamId: match.homeTeam.id,
+                            winner: MatchWinner.DRAW
+                        },
+                        {
+                            awayTeamId: match.homeTeam.id,
+                            winner: MatchWinner.DRAW
+                        }
+                    ]
+                }
+            });
+
+            const quantityWinAway = await this._prismaService.match.count({
+                where: {
+                    status: MatchStatus.FINISHED,
+                    OR: [
+                        {
+                            homeTeamId: match.awayTeam.id,
+                            winner: MatchWinner.HOME
+                        },
+                        {
+                            awayTeamId: match.awayTeam.id,
+                            winner: MatchWinner.AWAY
+                        }
+                    ]
+                }
+            });
+
+            const quantityLossesAway = await this._prismaService.match.count({
+                where: {
+                    status: MatchStatus.FINISHED,
+                    OR: [
+                        {
+                            homeTeamId: match.awayTeam.id,
+                            winner: MatchWinner.AWAY
+                        },
+                        {
+                            awayTeamId: match.awayTeam.id,
+                            winner: MatchWinner.HOME
+                        }
+                    ]
+                }
+            });
+
+            const quantityDrawAway = await this._prismaService.match.count({
+                where: {
+                    status: MatchStatus.FINISHED,
+                    OR: [
+                        {
+                            homeTeamId: match.awayTeam.id,
+                            winner: MatchWinner.DRAW
+                        },
+                        {
+                            awayTeamId: match.awayTeam.id,
+                            winner: MatchWinner.DRAW
+                        }
+                    ]
+                }
+            });
+
             return {
                 matchId: match.id,
                 startAt: match.startAt,
                 homeTeam: match.homeTeam,
-                awayTeam: match.awayTeam
+                awayTeam: match.awayTeam,
+                quantityWinHome,
+                quanttyLossesHome,
+                quantityDraftHome,
+                quantityWinAway,
+                quantityLossesAway,
+                quantityDrawAway
             };
-        });
+        }));
 
         return result;
     }
@@ -161,7 +266,7 @@ export class FootballService {
             
             const $ = load(html);
 
-            const scrapedMatches: { homeTeam: string, awayTeam: string, startDate: string, scoreHome: number, scoreAway: number, homePenaltyScore: string | null, awayPenaltyScore: string | null, penaltiesPlayed: boolean}[] = [];
+            const scrapedMatches: { homeTeam: string, awayTeam: string, startDate: string, scoreHome: number, scoreAway: number, homePenaltyScore: string | null, awayPenaltyScore: string | null, penaltiesPlayed: boolean, result: MatchWinner}[] = [];
             $('div[id^="g_1_"]').each((index, element) => {
 
                 const homeBlock = $(element).find('.event__homeParticipant');
@@ -176,6 +281,25 @@ export class FootballService {
                 const homeTeam = homeBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
                 const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
 
+                let result: MatchWinner;
+                if (penaltiesPlayed) {
+                    if (Number(homePenaltyScore) > Number(awayPenaltyScore)) {
+                        result = MatchWinner.HOME;
+                    } else {
+                        result = MatchWinner.AWAY;
+                    }
+                }
+                else {
+                    if (scoreHome > scoreAway) {
+                        result = MatchWinner.HOME;
+                    } else if (scoreAway > scoreHome) {
+                        result = MatchWinner.AWAY;
+                    }
+                    else {
+                        result = MatchWinner.DRAW;
+                    }
+                }                
+
                 const startDate = $(element).find('span[data-testid="wcl-stageTime"]').text().trim().replace(/[A-Za-z]+/g, '');
                 if (homeTeam && awayTeam) {
                     scrapedMatches.push({
@@ -186,7 +310,8 @@ export class FootballService {
                         scoreAway,
                         homePenaltyScore,
                         awayPenaltyScore,
-                        penaltiesPlayed
+                        penaltiesPlayed,
+                        result
                     });
                 }
             })
@@ -230,15 +355,10 @@ export class FootballService {
                         awayTeamScore: match.scoreAway,
                         homePenaltyScore: match.penaltiesPlayed ? Number(match.homePenaltyScore) : null,
                         awayPenaltyScore: match.penaltiesPlayed ? Number(match.awayPenaltyScore) : null,
-                        finishType: match.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR                                    
+                        finishType: match.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR,
+                        winner: match.result  
                     },
-                    update: {
-                        homeTeamScore: match.scoreHome,
-                        awayTeamScore: match.scoreAway,
-                        homePenaltyScore: match.penaltiesPlayed ? Number(match.homePenaltyScore) : null,
-                        awayPenaltyScore: match.penaltiesPlayed ? Number(match.awayPenaltyScore) : null,
-                        finishType: match.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR
-                    }
+                    update: { }
                 })
             }            
         } catch(error) {

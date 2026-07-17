@@ -86,6 +86,8 @@ model Match {
   homePenaltyScore  Int?
   awayPenaltyScore  Int?
 
+  winner            MatchWinner?
+
   finishType        MatchFinishType @default(REGULAR)
 
   status            MatchStatus
@@ -110,6 +112,12 @@ enum MatchStatus {
 enum MatchFinishType {
   REGULAR
   PENALTIES
+}
+
+enum MatchWinner {
+  HOME
+  AWAY
+  DRAW
 }
 
 model MatchAIPrediction {

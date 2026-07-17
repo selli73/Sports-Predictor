@@ -20,6 +20,7 @@ export class GeminiService {
         try {
 
             const matches = await this._footballService.getUpcomingMatches();
+
             const prompt = this._configService.getOrThrow('PROMPT_GEMINI') + JSON.stringify(matches);
 
             const interaction = await this._ai.interactions.create({
