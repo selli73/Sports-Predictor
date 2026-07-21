@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { GoogleGenAI } from '@google/genai';
 import { ConfigService } from '@nestjs/config';
-import { FootballService } from '../football/football.service';
+import { MatchService } from '../match/match.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PredictionModel } from '@prisma/client';
 
@@ -10,7 +10,7 @@ export class GeminiService {
     
     private _ai: GoogleGenAI;
 
-    constructor(private _configService: ConfigService, private _footballService: FootballService, private _prisma: PrismaService ) {
+    constructor(private _configService: ConfigService, private _matchService: MatchService, private _prisma: PrismaService ) {
         this._ai = new GoogleGenAI({
             apiKey: _configService.getOrThrow('GEMINI_API_KEY')
         });
@@ -19,7 +19,7 @@ export class GeminiService {
     async aiMatchProbability() {
         try {
 
-            const matches = await this._footballService.getUpcomingMatchesFromDB();
+            const matches = await this._matchService.getUpcomingMatchesFromDB();
 
             const prompt = this._configService.getOrThrow('PROMPT_GEMINI') + JSON.stringify(matches);
 
