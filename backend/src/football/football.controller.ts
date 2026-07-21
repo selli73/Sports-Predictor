@@ -1,17 +1,17 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Post } from '@nestjs/common';
 import { FootballService } from './football.service';
 
 @Controller('football')
 export class FootballController {
   constructor(private readonly footballService: FootballService) {}
 
-  @Get('upcomingMatches')
-  saveUpcomingMatches() {
-    return this.footballService.scrapeFlashScoreMatchesUpcomingWorldChempionship();
+  @Post('upcomingMatchesNplAct')
+  importUpcomingMatchesNplAct() {
+    return this.footballService.importUpcomingMatchesNplAct();
   }
 
-  @Get('finishedMatches')
-  saveFinishedMatches() {
-    return this.footballService.scrapeFlashScoreMatchesFinishedWorldChempionship();
+  @Post('finishedMatchesNplAct')
+  importFineshedNplActMatches() {
+    return this.footballService.importFinishedMatchesNplAct();
   }
 }

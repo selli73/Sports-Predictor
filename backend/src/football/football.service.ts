@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { MatchFinishType, MatchStatus, MatchWinner, Tournament } from '@prisma/client';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import puppeteer from 'puppeteer';
 import { load } from 'cheerio';
-import { MatchFinishType, MatchStatus, MatchWinner } from '@prisma/client';
-import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class FootballService {
     constructor(private _prismaService: PrismaService, private readonly _configService: ConfigService) {}
 
-    async getUpcomingMatches() {
+    async getUpcomingMatchesFromDB() {
         const matches = await this._prismaService.match.findMany({
             where: { status: MatchStatus.UPCOMING },
             select: {
@@ -146,38 +146,35 @@ export class FootballService {
         return result;
     }
 
-
     @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-    async scrapeFlashScoreMatchesUpcomingWorldChempionship() {
-        const browser = await puppeteer.launch({
-            executablePath: '/usr/bin/google-chrome',
-            headless: false,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox'
-            ]
-        });
+    async importUpcomingMatchesNplAct() {
+        const url = this._configService.getOrThrow('URL_NPL_ACT_UPCOMING_MATCHES_2026');
+        return this.getUpcomingMatches(url);
+    }
+
+    @Cron(CronExpression.EVERY_10_MINUTES)
+    async importFinishedMatchesNplAct() {
+        const url = this._configService.getOrThrow('URL_NPL_ACT_RESULT_2026');
+        return this.getFinishedMatches(url);
+    }
+
+    private async getUpcomingMatches(url: string) {
+        const browser = await this.getBrowser();
+
         try {
-            const page = await browser.newPage();    
-            const url = this._configService.getOrThrow('URL_WORLD_CUP_2026');
+            const page = await browser.newPage();
             await page.goto(url, {
                 waitUntil: 'networkidle2'
             });
 
             const html = await page.content();
-            const cheer = load(html);
 
-            const scrapedMatches: { homeTeam: string, awayTeam: string, startDate: string }[] = [];
-            const latestScoresSection = cheer('h2:contains("Latest Scores")').closest('section');
-            const todayMatchesSection = cheer(`h2:contains(Today's Matches)`).closest('section');
-            cheer('[id^="g_1_"]').each((index, element) => {
-
-                if (latestScoresSection.length && latestScoresSection.has(element).length > 0) {
-                    return;
-                }
-
-                const homeBlock = cheer(element).find('.event__homeParticipant');
-                const awayBlock = cheer(element).find('.event__awayParticipant');
+            const $ = load(html);
+            const scrapedMatches : { homeTeam: string, awayTeam: string, startDate: string }[] = [];
+            const todayMatchesSection = $(`h2:contains(Today's Matches)`).closest('section');
+            $('div[id^="g_1_"]').each((index, element) => {
+                const homeBlock = $(element).find('.event__homeParticipant');
+                const awayBlock = $(element).find('.event__awayParticipant');
 
                 const homeTeam = homeBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
                 const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
@@ -185,54 +182,39 @@ export class FootballService {
                 let startDate: string;
                 const now = new Date();
                 if (todayMatchesSection.length && todayMatchesSection.has(element).length > 0) {
-                    startDate = now.getDate() + '.' + (now.getMonth() + 1 > 9? now.getMonth() + 1 : '0'+ (now.getMonth() + 1)) + '. ' + cheer(element).find('span[data-testid="wcl-stageTime"]').text().trim();
+                    startDate = now.getDate() + '.' + (now.getMonth() + 1 > 9? now.getMonth() + 1 : '0'+ (now.getMonth() + 1)) + '. ' + $(element).find('span[data-testid="wcl-stageTime"]').text().trim();
                 } else {
-                    startDate = cheer(element).find('span[data-testid="wcl-stageTime"]').text().trim();                
+                    startDate = $(element).find('span[data-testid="wcl-stageTime"]').text().trim();
                 }
-                
-                
+
                 if (homeTeam && awayTeam) {
                     scrapedMatches.push({
-                    homeTeam,
-                    awayTeam,
-                    startDate
-                });
+                        homeTeam,
+                        awayTeam,
+                        startDate
+                    });
                 }
             });
 
             for (const match of scrapedMatches) {
-                const homeTeamEntity = await this._prismaService.team.upsert({
-                    where: { name: match.homeTeam },
-                    update: {},
-                    create: { name: match.homeTeam }
-                });
-                const awayTeamEntity = await this._prismaService.team.upsert({
-                    where: { name: match.awayTeam },
-                    update: {},
-                    create: { name: match.awayTeam }
-                });
+                const homeTeamEntity = await this.getOrCreateTeam(match.homeTeam);
+                const awayTeamEntity = await this.getOrCreateTeam(match.awayTeam);
 
-                const [dayMonth, time] = match.startDate.split(' ');
-                const [day, month] = dayMonth.split('.');
-                const [hours, minutes] = time.split(':');
-                const matchKey = `${homeTeamEntity.id}-${awayTeamEntity.id}-2026-${month}-${day}`;
-                const matchDate = new Date(2026, Number(month) - 1, Number(day), Number(hours), Number(minutes));
+                const matchKey = this.generateMatchKey(homeTeamEntity.id, awayTeamEntity.id, match.startDate);
+                const matchDate = this.parseMatchDate(match.startDate);
 
-                await this._prismaService.match.upsert({
-                    where: { matchKey },
-                    update: { },
-                    create: {
-                        matchKey,
-                        homeTeamId: homeTeamEntity.id,
-                        awayTeamId: awayTeamEntity.id,
-                        status: 'UPCOMING',
-                        startAt: matchDate,
-                    }
+                await this.saveMatch({ 
+                    matchKey, 
+                    startAt: matchDate, 
+                    status: MatchStatus.UPCOMING, 
+                    tournament: Tournament.NPL_ACT, 
+                    homeTeamId: homeTeamEntity.id, 
+                    awayTeamId: awayTeamEntity.id 
                 });
             }
 
             return {
-                success: true,
+                seccuss: true,
                 count: scrapedMatches.length
             };
         } catch(error) {
@@ -242,33 +224,19 @@ export class FootballService {
         }
     }
 
+    private async getFinishedMatches(url: string) {
+        const browser = await this.getBrowser()
 
-    async scrapeFlashScoreMatchesFinishedWorldChempionship() {
-        
-        const browser = await puppeteer.launch({
-            headless: false,
-            executablePath: '/usr/bin/google-chrome',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox'
-            ]
-        });
-        
-        try {            
-            const page = await browser.newPage();    
-            const url = this._configService.getOrThrow('URL_ALL_WORLD_CUP_MATCHES_2026');
-            
+        try {
+            const page = await browser.newPage();
             await page.goto(url, {
                 waitUntil: 'networkidle2'
             });
 
             const html = await page.content();
-            
             const $ = load(html);
-
-            const scrapedMatches: { homeTeam: string, awayTeam: string, startDate: string, scoreHome: number, scoreAway: number, homePenaltyScore: string | null, awayPenaltyScore: string | null, penaltiesPlayed: boolean, result: MatchWinner}[] = [];
+            const scrapedMatches : { homeTeam: string, awayTeam: string, startDate: string, scoreHome: number, scoreAway: number, homePenaltyScore: string | null, awayPenaltyScore: string | null, penaltiesPlayed: boolean, result: MatchWinner }[] = [];
             $('div[id^="g_1_"]').each((index, element) => {
-
                 const homeBlock = $(element).find('.event__homeParticipant');
                 const awayBlock = $(element).find('.event__awayParticipant');
 
@@ -277,30 +245,14 @@ export class FootballService {
                 const homePenaltyScore = $(element).find('.event__score--home sup').text().replace(/[()]/g, '');
                 const awayPenaltyScore = $(element).find('.event__score--away sup').text().replace(/[()]/g, '');
                 const penaltiesPlayed = homePenaltyScore.length > 0 && awayPenaltyScore.length > 0;
-                
+
                 const homeTeam = homeBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
-                const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();
-
-                let result: MatchWinner;
-                if (penaltiesPlayed) {
-                    if (Number(homePenaltyScore) > Number(awayPenaltyScore)) {
-                        result = MatchWinner.HOME;
-                    } else {
-                        result = MatchWinner.AWAY;
-                    }
-                }
-                else {
-                    if (scoreHome > scoreAway) {
-                        result = MatchWinner.HOME;
-                    } else if (scoreAway > scoreHome) {
-                        result = MatchWinner.AWAY;
-                    }
-                    else {
-                        result = MatchWinner.DRAW;
-                    }
-                }                
-
+                const awayTeam = awayBlock.find('span[data-testid="wcl-scores-simple-text-01"]').text().trim();       
+                
+                const result = this.calculateWinner(penaltiesPlayed, homePenaltyScore, awayPenaltyScore, scoreHome, scoreAway);   
+                 
                 const startDate = $(element).find('span[data-testid="wcl-stageTime"]').text().trim().replace(/[A-Za-z]+/g, '');
+                
                 if (homeTeam && awayTeam) {
                     scrapedMatches.push({
                         homeTeam,
@@ -314,57 +266,108 @@ export class FootballService {
                         result
                     });
                 }
-            })
+            });
 
             for (const match of scrapedMatches) {
-                const homeTeamEntity = await this._prismaService.team.upsert({
-                    where: {
-                        name: match.homeTeam
-                    },
-                    create: {
-                        name: match.homeTeam                        
-                    },
-                    update: { }
-                });
+                const homeTeamEntity = await this.getOrCreateTeam(match.homeTeam);
+                const awayTeamEntity = await this.getOrCreateTeam(match.awayTeam);
+            
+                const matchKey = this.generateMatchKey(homeTeamEntity.id, awayTeamEntity.id, match.startDate);
+                const matchDate = this.parseMatchDate(match.startDate);
 
-                const awayTeamEntity = await this._prismaService.team.upsert({
-                    where: {
-                        name: match.awayTeam
-                    },
-                    create: {
-                        name: match.awayTeam
-                    },
-                    update: { }
-                });
+                await this.saveMatch({ matchKey, startAt: matchDate, status: MatchStatus.FINISHED, tournament: Tournament.NPL_ACT, homeTeamId: homeTeamEntity.id, awayTeamId: awayTeamEntity.id, penaltiesPlayed: match.penaltiesPlayed, winner: match.result, homeTeamScore: match.scoreHome, awayTeamScore: match.scoreAway, homePenaltyScore: match.homePenaltyScore, awayPenaltyScore: match.awayPenaltyScore });                
+            }
 
-                const [date, time] = match.startDate.split(' ');
-                const [day, month] = date.split('.');
-                const [hours, minutes] = time.split(':');
-                const matchKey = `${homeTeamEntity.id}-${awayTeamEntity.id}-2026-${month}-${day}`;
-                const matchDate = new Date(2026, Number(month) - 1, Number(day), Number(hours), Number(minutes));
-
-                await this._prismaService.match.upsert({
-                    where: { matchKey },
-                    create: {
-                        matchKey,
-                        homeTeamId: homeTeamEntity.id,
-                        awayTeamId: awayTeamEntity.id,
-                        status: MatchStatus.FINISHED,
-                        startAt: matchDate,
-                        homeTeamScore: match.scoreHome,
-                        awayTeamScore: match.scoreAway,
-                        homePenaltyScore: match.penaltiesPlayed ? Number(match.homePenaltyScore) : null,
-                        awayPenaltyScore: match.penaltiesPlayed ? Number(match.awayPenaltyScore) : null,
-                        finishType: match.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR,
-                        winner: match.result  
-                    },
-                    update: { }
-                })
-            }            
+            return {
+                seccuss: true,
+                count: scrapedMatches.length
+            };
         } catch(error) {
             console.log(error);
         } finally {
-            browser.close();
+            await browser.close();
         }
+    }
+
+    private async getBrowser() {
+        return puppeteer.launch({
+            headless: true,
+            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ]
+        });
+    }
+    
+
+    private async getOrCreateTeam(nameTeam: string) {
+        return await this._prismaService.team.upsert({
+            where: {
+                name: nameTeam
+            },
+            create: {
+                name: nameTeam
+            },
+            update: { }
+        })
+    }
+
+    private parseMatchDate(startDate: string) {
+        const [dayMonth, time] = startDate.split(' ');
+        const [day, month] = dayMonth.split('.');
+        const [hours, minutes] = time.split(':');
+
+        return new Date(2026, Number(month) - 1, Number(day), Number(hours), Number(minutes));
+    }
+
+    private generateMatchKey(homeTeamId: string, awayTeamId: string, startDate: string) {
+        const [date] = startDate.split(' ');
+        const [day, month] = date.split('.');
+
+        return `${homeTeamId}-${awayTeamId}-2026-${month}-${day}`;
+    }
+
+    private calculateWinner(penaltiesPlayed: boolean, homePenaltyScore: string, awayPenaltyScore: string, scoreHome: number, scoreAway: number) {
+        if (penaltiesPlayed) {
+            return Number(homePenaltyScore) > Number(awayPenaltyScore)? MatchWinner.HOME : MatchWinner.AWAY;            
+        }
+
+        if (scoreHome > scoreAway) return MatchWinner.HOME;
+        if (scoreAway > scoreHome) return MatchWinner.AWAY;
+        
+        return MatchWinner.DRAW;
+    }
+
+    private async saveMatch(data: { matchKey: string, startAt: Date, status: MatchStatus, tournament: Tournament, homeTeamId: string, awayTeamId: string,
+        penaltiesPlayed?: boolean, winner?: MatchWinner,  homeTeamScore?: number, awayTeamScore?: number, homePenaltyScore?: string | null, awayPenaltyScore?: string | null }) {
+        await this._prismaService.match.upsert({
+            where: {
+                matchKey:data.matchKey
+            },
+            create: {
+                matchKey: data.matchKey,
+                homeTeamId: data.homeTeamId,
+                awayTeamId: data.awayTeamId,
+                homeTeamScore: data.homeTeamScore,
+                awayTeamScore: data.awayTeamScore,
+                homePenaltyScore: data.homePenaltyScore !== null? Number(data.homePenaltyScore) : null,
+                awayPenaltyScore: data.awayPenaltyScore !== null? Number(data.awayPenaltyScore) : null,
+                winner: data.winner,
+                finishType: data.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR,
+                tournament: data.tournament,
+                status: data.status,
+                startAt: data.startAt
+            },
+            update: {
+                homeTeamScore: data.homeTeamScore,
+                awayTeamScore: data.awayTeamScore,
+                homePenaltyScore: data.homePenaltyScore !== null? Number(data.homePenaltyScore) : null,
+                awayPenaltyScore: data.awayPenaltyScore !== null? Number(data.awayPenaltyScore) : null,
+                winner: data.winner,
+                finishType: data.penaltiesPlayed ? MatchFinishType.PENALTIES : MatchFinishType.REGULAR,
+                status: data.status
+            }
+        });
     }
 }

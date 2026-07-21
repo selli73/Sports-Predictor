@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Match" ALTER COLUMN "finishType" DROP NOT NULL,
+ALTER COLUMN "finishType" DROP DEFAULT;

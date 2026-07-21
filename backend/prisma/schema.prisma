@@ -88,7 +88,9 @@ model Match {
 
   winner            MatchWinner?
 
-  finishType        MatchFinishType @default(REGULAR)
+  finishType        MatchFinishType?
+
+  tournament        Tournament
 
   status            MatchStatus
   startAt           DateTime
@@ -118,6 +120,11 @@ enum MatchWinner {
   HOME
   AWAY
   DRAW
+}
+
+enum Tournament {
+  WORLD_CHAMPIONSHIP
+  NPL_ACT
 }
 
 model MatchAIPrediction {

@@ -19,7 +19,7 @@ export class GeminiService {
     async aiMatchProbability() {
         try {
 
-            const matches = await this._footballService.getUpcomingMatches();
+            const matches = await this._footballService.getUpcomingMatchesFromDB();
 
             const prompt = this._configService.getOrThrow('PROMPT_GEMINI') + JSON.stringify(matches);
 
