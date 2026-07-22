@@ -7,12 +7,12 @@ import { Roles } from '../roles/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('gemini')
-@ApiBearerAuth()
-@Roles(Role.ADMIN) @UseGuards(JwtAuthGuard, RolesGuard) 
+@UseGuards(JwtAuthGuard, RolesGuard) @ApiBearerAuth()
 export class GeminiController {
   constructor(private readonly geminiService: GeminiService) {}
 
   @Post('ai-probability')
+  @Roles(Role.ADMIN) 
   @ApiOperation({ summary: 'Calculating the probability of a match outcome' }) @ApiResponse({ status: 201, description: 'The probability of matches being successful is recorded' })
   aiInteraction() {
     return this.geminiService.aiMatchProbability();

@@ -7,15 +7,15 @@ import { JwtAuthGuard } from '../user/guards/jwt-auth.guard';
 import { RolesGuard } from '../roles/guards/roles.guard';
 
 @Controller('points')
-@ApiBearerAuth()
-@Roles(Role.ADMIN) @UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard) @ApiBearerAuth()
 export class PointsController {
   constructor(private readonly pointsService: PointsService) {}
 
   @Post('add')
+  @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Scoring points for correct match prediction' })
-  @ApiResponse({ status: 201, description: 'Points added successfully' }) @ApiResponse({ status: 404, description: 'There are no completed matches' })
+  @ApiResponse({ status: 201, description: 'Points added successfully' })
   addPoint() {
-    return this.addPoint();
+    return this.pointsService.addPoints();
   }
 }

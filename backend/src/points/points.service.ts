@@ -1,12 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MatchStatus } from '@prisma/client';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class PointsService {
     
-    constructor(private _prismaService: PrismaService) {}
+    constructor(private _prismaService: PrismaService, @Inject(CACHE_MANAGER) private _cacheManager: Cache) {}
     
     @Cron(CronExpression.EVERY_10_MINUTES)
     async addPoints() {
@@ -17,8 +19,10 @@ export class PointsService {
             }
         });
 
-        if (!finishedMatches) {
-            throw new NotFoundException('Завершенных матчей нет')
+        if (finishedMatches.length === 0) {
+            return {
+                message: 'Нет завершенных матчей для расчета'
+            };
         }
 
         for (const match of finishedMatches) {
@@ -26,16 +30,36 @@ export class PointsService {
             if (!match.outcome) {
                 continue;
             }
+            
             const matchPredictions = await this._prismaService.prediction.findMany({
                 where: {
                     matchId: match.id,
-                    outcome: match.outcome,
-                    pointsWon: 0
+                    outcome: match.outcome
                 }
             });
 
+            if (matchPredictions.length === 0) {
+                await this._prismaService.match.update({
+                    where: { id: match.id },
+                    data: { isCalculated: true }
+                })
+
+                continue;
+            }
+
             await this._prismaService.$transaction(async (tx) => {
-                for (const prediction of matchPredictions) {                    
+                
+                await tx.match.update({
+                    where: {
+                        id: match.id
+                    },
+                    data: {
+                        isCalculated : true
+                    }
+                });
+
+                for (const prediction of matchPredictions) {          
+
                     await tx.prediction.update({
                         where: {
                             id: prediction.id
@@ -57,17 +81,10 @@ export class PointsService {
                         }
                     });
                 }
-
-                await tx.match.update({
-                    where: {
-                        id: match.id
-                    },
-                    data: {
-                        isCalculated : true
-                    }
-                });
-            });                            
+            });
         }
+        
+        await this._cacheManager.del('leaderboard')
 
         return {
             message: 'Баллы успешно добавлены'

@@ -6,8 +6,7 @@ import type { IJwtUserRequest } from '../user/typings';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller('predictions')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard) @ApiBearerAuth()
 export class PredictionsController {
   constructor(private readonly predictionsService: PredictionsService) {}
 

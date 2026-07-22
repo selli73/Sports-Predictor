@@ -7,18 +7,19 @@ import { JwtAuthGuard } from '../user/guards/jwt-auth.guard';
 import { RolesGuard } from '../roles/guards/roles.guard';
 
 @Controller('football')
-@ApiBearerAuth()
-@Roles(Role.ADMIN) @UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard) @ApiBearerAuth()
 export class FootballController {
   constructor(private readonly footballService: FootballService) {}
 
   @Post('upcomingMatchesNplAct')
+  @Roles(Role.ADMIN) 
   @ApiOperation({ summary: 'Recording of upcoming matches', description: 'Recording upcoming matches from Flashscore NPL ACT Australia' })
   importUpcomingMatchesNplAct() {
     return this.footballService.importUpcomingMatchesNplAct();
   }
 
   @Post('finishedMatchesNplAct')
+  @Roles(Role.ADMIN) 
   @ApiOperation({ summary: 'Recording of finished matches', description: 'Recording finished matches from Flashscore NPL ACT Australia' })
   importFineshedNplActMatches() {
     return this.footballService.importFinishedMatchesNplAct();
