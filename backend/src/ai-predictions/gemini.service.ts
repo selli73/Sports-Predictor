@@ -1,9 +1,9 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { GoogleGenAI } from '@google/genai';
 import { ConfigService } from '@nestjs/config';
-import { MatchService } from '../match/match.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PredictionModel } from '@prisma/client';
+import { MatchService } from '../match/match.service';
 
 @Injectable()
 export class GeminiService {

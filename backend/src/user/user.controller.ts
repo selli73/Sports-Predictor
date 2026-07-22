@@ -6,9 +6,6 @@ import { ChangePasswordDto, ForgotPasswordDto, PasswordResetCodeVerificationDto,
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { IJwtUserRequest, IPasswordResetJwtUserRequest } from './typings';
 import { PasswordResetJwt } from './guards/jwt-passwordReset.guard';
-import { Roles } from '../roles/decorators/roles.decorator';
-import { Role } from '@prisma/client';
-import { RolesGuard } from '../roles/guards/roles.guard';
 
 @Controller('user')
 export class UserController {

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { MatchStatus, MatchWinner } from '@prisma/client';
+import { MatchStatus, MatchOutcome } from '@prisma/client';
 
 @Injectable()
 export class MatchService {
@@ -49,6 +49,10 @@ export class MatchService {
             orderBy: { startAt: 'asc' }
         });
 
+        if (!matches) {
+            throw new NotFoundException('Предстоящих матчей на данный момент нет')
+        }
+
         return matches;
     }
 
@@ -81,11 +85,11 @@ export class MatchService {
                         OR: [
                             {
                                 homeTeamId: match.homeTeam.id,
-                                winner: MatchWinner.HOME
+                                outcome: MatchOutcome.HOME
                             },
                             {
                                 awayTeamId: match.homeTeam.id,
-                                winner: MatchWinner.AWAY
+                                outcome: MatchOutcome.AWAY
                             },                        
                         ]
                     }
@@ -97,11 +101,11 @@ export class MatchService {
                         OR: [
                             {
                                 homeTeamId: match.homeTeam.id,
-                                winner: MatchWinner.AWAY
+                                outcome: MatchOutcome.AWAY
                             },
                             {
                                 awayTeamId: match.homeTeam.id,
-                                winner: MatchWinner.HOME
+                                outcome: MatchOutcome.HOME
                             }
                         ]
                     }
@@ -113,11 +117,11 @@ export class MatchService {
                         OR: [
                             {
                                 homeTeamId: match.homeTeam.id,
-                                winner: MatchWinner.DRAW
+                                outcome: MatchOutcome.DRAW
                             },
                             {
                                 awayTeamId: match.homeTeam.id,
-                                winner: MatchWinner.DRAW
+                                outcome: MatchOutcome.DRAW
                             }
                         ]
                     }
@@ -129,11 +133,11 @@ export class MatchService {
                         OR: [
                             {
                                 homeTeamId: match.awayTeam.id,
-                                winner: MatchWinner.HOME
+                                outcome: MatchOutcome.HOME
                             },
                             {
                                 awayTeamId: match.awayTeam.id,
-                                winner: MatchWinner.AWAY
+                                outcome: MatchOutcome.AWAY
                             }
                         ]
                     }
@@ -145,11 +149,11 @@ export class MatchService {
                         OR: [
                             {
                                 homeTeamId: match.awayTeam.id,
-                                winner: MatchWinner.AWAY
+                                outcome: MatchOutcome.AWAY
                             },
                             {
                                 awayTeamId: match.awayTeam.id,
-                                winner: MatchWinner.HOME
+                                outcome: MatchOutcome.HOME
                             }
                         ]
                     }
@@ -161,11 +165,11 @@ export class MatchService {
                         OR: [
                             {
                                 homeTeamId: match.awayTeam.id,
-                                winner: MatchWinner.DRAW
+                                outcome: MatchOutcome.DRAW
                             },
                             {
                                 awayTeamId: match.awayTeam.id,
-                                winner: MatchWinner.DRAW
+                                outcome: MatchOutcome.DRAW
                             }
                         ]
                     }
