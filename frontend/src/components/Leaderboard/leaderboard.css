@@ -1,0 +1,110 @@
+.leaderboard {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 36px 40px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+}
+
+.leaderboard-row + .leaderboard-row {
+  margin-top: 2px;
+}
+
+.leaderboard-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.leaderboard-row.is-me {
+  background: var(--accent-muted);
+  box-shadow: inset 0 0 0 1px rgba(52, 210, 123, 0.3);
+}
+
+.leaderboard-place {
+  color: var(--text-faint);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.is-top .leaderboard-place {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--accent-text);
+  font-size: 14px;
+}
+
+.is-top-1 .leaderboard-place {
+  background: var(--gold);
+}
+
+.is-top-2 .leaderboard-place {
+  background: var(--silver);
+}
+
+.is-top-3 .leaderboard-place {
+  background: var(--bronze);
+}
+
+.leaderboard-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.leaderboard-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-points {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.leaderboard-points small {
+  color: var(--text-faint);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .leaderboard-row {
+    grid-template-columns: 30px 1fr auto;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .leaderboard-avatar {
+    display: none;
+  }
+}

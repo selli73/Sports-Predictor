@@ -1,0 +1,91 @@
+.ai-probability {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.ai-probability--empty {
+  flex-direction: row;
+  align-items: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.ai-probability-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-probability-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(76, 141, 255, 0.2), rgba(166, 120, 255, 0.2));
+  color: #A9C4FF;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-probability-title {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ai-probability-bar {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.ai-probability-segment {
+  min-width: 3px;
+  border-radius: 2px;
+  transition: width 400ms ease;
+}
+
+.ai-probability .is-home {
+  background: var(--home);
+}
+
+.ai-probability .is-draw {
+  background: var(--draw);
+}
+
+.ai-probability .is-away {
+  background: var(--away);
+}
+
+.ai-probability-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ai-probability-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-probability-legend-item strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.ai-probability-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}

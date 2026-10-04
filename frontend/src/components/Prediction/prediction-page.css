@@ -1,0 +1,38 @@
+.prediction-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.prediction-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+}
+
+.prediction-stat-label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.prediction-stat-value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.prediction-stat-value.is-accent {
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .prediction-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .prediction-stat-value {
+    font-size: 22px;
+  }
+}

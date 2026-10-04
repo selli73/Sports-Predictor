@@ -1,0 +1,19 @@
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(240, 70, 110, 0.1);
+  border: 1px solid rgba(240, 70, 110, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.error::before {
+  content: "✕";
+  flex-shrink: 0;
+  font-size: 11px;
+  margin-top: 2px;
+}

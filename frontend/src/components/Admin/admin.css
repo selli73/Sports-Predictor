@@ -1,0 +1,48 @@
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+
+.admin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-card-step {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-card-title {
+  font-size: 16px;
+}
+
+.admin-card-description {
+  flex: 1;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.admin-card .button {
+  align-self: flex-start;
+}

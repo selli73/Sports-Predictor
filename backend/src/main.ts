@@ -8,7 +8,9 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true
   }));
-
+  app.enableCors({
+    origin: ['http://localhost', 'http://localhost:5173']
+  })
   const config = new DocumentBuilder()
     .setTitle('Sports predictor')
     .setDescription('API document for the predictor')
