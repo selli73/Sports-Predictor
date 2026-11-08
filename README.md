@@ -9,191 +9,202 @@
 ![](https://img.shields.io/badge/-Vite-B73BFE?style=flat&logo=vite&logoColor=white)
 ![](https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white)
 
-# Sports Predictor — прогнозы на футбольные матчи
+<a id="sports-predictor--football-match-predictions"></a>
 
-Платформа для прогнозов на футбольные матчи. Пользователь выбирает исход ближайшего матча — победа хозяев, ничья или победа гостей, — а после финального свистка получает очки за верный прогноз и соревнуется с другими игроками в рейтинге. Для каждого матча нейросеть Google Gemini рассчитывает вероятность исходов, на которую можно ориентироваться.
+# Sports Predictor: football match predictions
 
----
+Predict the outcome of a football match: a home win, a draw, or an away win. Correct predictions earn points once the match ends and count toward your place on the leaderboard. Each match also has outcome probabilities estimated by Google Gemini.
 
-## :page_facing_up: Содержание
+<a id="page_facing_up-table-of-contents"></a>
 
-- [Sports Predictor — прогнозы на футбольные матчи](#sports-predictor--прогнозы-на-футбольные-матчи)
-  - [:page\_facing\_up: Содержание](#page_facing_up-содержание)
-  - [:pencil: О проекте](#pencil-о-проекте)
-  - [:boom: Возможности](#boom-возможности)
-    - [:lock: Аккаунты](#lock-аккаунты)
-    - [:soccer: Матчи и прогнозы](#soccer-матчи-и-прогнозы)
-    - [:robot: ИИ-прогноз исходов](#robot-ии-прогноз-исходов)
-    - [:trophy: Очки и рейтинг](#trophy-очки-и-рейтинг)
-    - [:spider\_web: Сбор данных](#spider_web-сбор-данных)
-    - [:hammer\_and\_wrench: Администрирование](#hammer_and_wrench-администрирование)
-  - [:wrench: Технологии](#wrench-технологии)
-  - [:rocket: Установка и запуск](#rocket-установка-и-запуск)
-    - [Требования](#требования)
-    - [Как запустить проект](#как-запустить-проект)
-  - [:green\_book: Документация API](#green_book-документация-api)
-  - [:notebook: Переменные окружения](#notebook-переменные-окружения)
+## Contents
+
+- [Sports Predictor: football match predictions](#sports-predictor--football-match-predictions)
+  - [Contents](#page_facing_up-table-of-contents)
+  - [How it works](#pencil-about-the-project)
+  - [Features](#boom-features)
+    - [Accounts](#lock-accounts)
+    - [Matches and predictions](#soccer-matches-and-predictions)
+    - [Gemini probabilities](#robot-ai-outcome-predictions)
+    - [Points and leaderboard](#trophy-points-and-leaderboard)
+    - [Data collection](#spider_web-data-collection)
+    - [Administration](#hammer_and_wrench-administration)
+  - [Technologies](#wrench-technologies)
+  - [Local setup](#rocket-installation-and-setup)
+    - [Requirements](#requirements)
+    - [How to run the project](#how-to-run-the-project)
+  - [API documentation](#green_book-api-documentation)
+  - [Environment variables](#notebook-environment-variables)
     - [`Sports-Predictor/.env`](#sports-predictorenv)
     - [`backend/.env`](#backendenv)
     - [`frontend/.env`](#frontendenv)
-  - [:bust\_in\_silhouette: Итого](#bust_in_silhouette-итого)
+  - [Why I built it](#bust_in_silhouette-summary)
 
-## :pencil: О проекте
+<a id="pencil-about-the-project"></a>
 
-***Sports Predictor*** — full-stack приложение, которое само собирает расписание и результаты матчей, считает вероятности исходов с помощью ИИ и автоматически начисляет очки игрокам.
+## How it works
 
-Как это работает:
+1. The backend fetches Australia's NPL ACT league schedule from Flashscore using Puppeteer, which runs a headless browser, and saves it to the database.
+2. Google Gemini receives each team's win, draw, and loss statistics for upcoming matches and returns the probability of each outcome.
+3. Users submit predictions: 1, X, or 2. Predictions can only be submitted before kickoff and cannot be changed.
+4. Every 10 minutes, the backend fetches completed match results, awards points for correct predictions, and updates the leaderboard.
 
-1. Backend через headless-браузер **Puppeteer** забирает с **Flashscore** расписание матчей австралийской лиги **NPL ACT** и сохраняет их в базу.
-2. Для предстоящих матчей статистика побед, ничьих и поражений команд отправляется в **Google Gemini**, и нейросеть возвращает вероятность каждого исхода.
-3. Пользователи делают прогнозы: П1, Х или П2. Прогноз можно сделать только до начала матча, и изменить его нельзя.
-4. Каждые 10 минут backend забирает результаты завершённых матчей, начисляет очки за угаданные исходы и обновляет рейтинг.
+<a id="boom-features"></a>
 
----
+## Features
 
-## :boom: Возможности
+<a id="lock-accounts"></a>
 
-### :lock: Аккаунты
-- Регистрация и авторизация по JWT (токен живёт 1 день), хеширование паролей через bcrypt
-- Приветственное письмо после регистрации
-- Восстановление пароля по коду из письма: код действует 15 минут
-- Смена пароля в личном кабинете
-- Роли `USER` и `ADMIN` — административные эндпоинты закрыты guard'ом по роли
+### Accounts
 
-### :soccer: Матчи и прогнозы
-- Лента ближайших матчей с постраничной подгрузкой
-- Карточка матча: команды, дата, шкала вероятностей от ИИ и составы, если они есть в базе
-- Прогноз на исход: П1 / Х / П2 — один на матч, только до его начала, без возможности изменить
-- Страница «Мои прогнозы»: счёт, статус матча, результат прогноза и полученные очки, фильтр «Ожидают / Завершены»
-- Личная статистика: количество прогнозов, угаданные исходы, точность и сумма очков
+Users can register, sign in, and change their password from their account. Authentication uses JWT tokens that expire after 1 day; bcrypt hashes passwords. A role-based guard restricts administrative endpoints according to the `USER` and `ADMIN` roles.
 
-### :robot: ИИ-прогноз исходов
-- Для каждого предстоящего матча Gemini получает статистику обеих команд: победы, ничьи, поражения
-- Результат сохраняется в базу: вероятность победы хозяев, ничьей и победы гостей
-- На frontend вероятности показываются цветной шкалой и в процентах
+Registration sends a welcome email. Password recovery uses an emailed code that stays valid for 15 minutes.
 
-### :trophy: Очки и рейтинг
-- **10 очков** за каждый угаданный исход
-- Начисление выполняется в транзакции, матч помечается как рассчитанный — очки не начисляются дважды
-- Топ-10 игроков с подсветкой текущего пользователя
-- Рейтинг кэшируется в **Redis** на час и сбрасывается при каждом начислении очков
+<a id="soccer-matches-and-predictions"></a>
 
-### :spider_web: Сбор данных
+### Matches and predictions
 
-| Задача | Расписание | Что делает |
+The upcoming match feed loads in pages. Each card shows the teams, date, and AI probability bar, plus lineups when they are available in the database. You can submit one prediction per match (1 / X / 2) before kickoff. Once submitted, it cannot be changed.
+
+The "My Predictions" page shows the score, match status, prediction result, and points earned, with a "Pending / Completed" filter. Personal statistics track your prediction count, correct outcomes, accuracy, and total points.
+
+<a id="robot-ai-outcome-predictions"></a>
+
+### Gemini probabilities
+
+For each upcoming match, Gemini uses both teams' wins, draws, and losses to estimate the chances of a home win, a draw, and an away win. The backend saves these probabilities to the database, and the frontend displays them as percentages and a colored bar.
+
+<a id="trophy-points-and-leaderboard"></a>
+
+### Points and leaderboard
+
+Each correct prediction earns 10 points. Awarding points and marking a match as scored happen in the same transaction to prevent duplicate awards.
+
+The leaderboard lists the top 10 players and highlights the current user. Redis caches it for one hour; awarding points invalidates the cache.
+
+<a id="spider_web-data-collection"></a>
+
+### Data collection
+
+| Task | Schedule | What it does |
 |--------|------------|------------|
-| Импорт предстоящих матчей | каждый день в 00:00 | парсит расписание NPL ACT с Flashscore, создаёт команды и матчи |
-| Импорт результатов | каждые 10 минут | сохраняет счёт, серию пенальти и исход, переводит матч в статус «Завершён» |
-| Начисление очков | каждые 10 минут | начисляет очки за угаданные исходы по завершённым матчам |
-| Расчёт вероятностей (Gemini) | вручную | отправляет предстоящие матчи в Gemini и сохраняет вероятности |
+| Import upcoming matches | Daily at 00:00 | Parses the NPL ACT schedule from Flashscore and creates teams and matches |
+| Import results | Every 10 minutes | Saves the score, penalty shootout, and outcome, and sets the match status to "Completed" |
+| Award points | Every 10 minutes | Awards points for correct outcome predictions on completed matches |
+| Calculate probabilities (Gemini) | Manually | Sends upcoming matches to Gemini and saves the probabilities |
 
-### :hammer_and_wrench: Администрирование
-- Страница `/admin` видна только пользователям с ролью `ADMIN`
-- Ручной запуск любой задачи из таблицы выше, не дожидаясь расписания
+<a id="hammer_and_wrench-administration"></a>
 
----
+### Administration
 
-## :wrench: Технологии
+The `/admin` page is visible only to users with the `ADMIN` role. It lets administrators run any of the tasks above manually, without waiting for the next scheduled run.
 
-**Backend**
-- **NestJS** + **TypeScript**
-- **PostgreSQL** + **Prisma ORM** — пользователи, команды, игроки, матчи и прогнозы
-- **Redis** — кэш рейтинга
-- **@nestjs/schedule** — фоновые задачи по cron
-- **Puppeteer** + **Cheerio** — парсинг расписания и результатов матчей
-- **Google Gemini API** — расчёт вероятностей исходов
-- **JWT** + **Passport** + **bcrypt** — авторизация и безопасное хранение паролей
-- **Nodemailer** — письма при регистрации и коды восстановления пароля
-- **class-validator** — валидация входящих данных
-- **Swagger** — автодокументация API
+<a id="wrench-technologies"></a>
 
-**Frontend**
-- **React** + **TypeScript** + **Vite**
-- **MobX** — управление состоянием
-- **Axios** — запросы к API
-- **React Router** — маршрутизация
+## Technologies
 
-**Инфраструктура**
-- **Docker** + **Docker Compose** — PostgreSQL и Redis
+### Backend
 
----
+- NestJS + TypeScript
+- PostgreSQL + Prisma ORM for users, teams, players, matches, and predictions
+- Redis for the leaderboard cache
+- @nestjs/schedule for cron-based background tasks
+- Puppeteer + Cheerio for scraping match schedules and results
+- Google Gemini API for outcome probabilities
+- JWT + Passport + bcrypt for authentication and secure password storage
+- Nodemailer for registration emails and password recovery codes
+- class-validator for input validation
+- Swagger for automatic API documentation
 
-## :rocket: Установка и запуск
+### Frontend
 
-### Требования
+- React + TypeScript + Vite
+- MobX for state management
+- Axios for API requests
+- React Router for routing
+
+### Infrastructure
+
+Docker Compose runs PostgreSQL and Redis in Docker containers.
+
+<a id="rocket-installation-and-setup"></a>
+
+## Local setup
+
+### Requirements
 
 - [Bun](https://bun.sh/)
-- Docker и Docker Compose
-- Google Chrome — Puppeteer запускает его по пути `C:\Program Files\Google\Chrome\Application\chrome.exe` (задан в `backend/src/football/football.service.ts`)
+- Docker and Docker Compose
+- Google Chrome. Puppeteer launches it from `C:\Program Files\Google\Chrome\Application\chrome.exe` (configured in `backend/src/football/football.service.ts`)
 
-### Как запустить проект
+### How to run the project
 
-**1. Клонируйте репозиторий:**
+#### 1. Clone the repository and install dependencies
 ```bash
-# Клонировать репозиторий
+# Clone the repository
 git clone https://github.com/selli73/Sports-Predictor.git
 
-# Перейти в папку проекта
+# Navigate to the project directory
 cd Sports-Predictor
 
 cd backend
-# Установить зависимости backend
+# Install backend dependencies
 bun install
 
 cd ..
 
 cd frontend
-# Установить зависимости frontend
+# Install frontend dependencies
 bun install
 ```
 
-**2. Создайте файлы окружения**
+#### 2. Create the environment files
 
-Все `.env` перечислены в `.gitignore`, поэтому после клонирования их нужно создать самому по примеру `.env.example`.
+The `.env` files are excluded by `.gitignore`. Copy the `.env.example` templates to create them:
 
 ```bash
-# В корне проекта — для Docker Compose
+# In the project root — for Docker Compose
 cp .env.example .env
 
-# Для backend
+# For the backend
 cp backend/.env.example backend/.env
 
-# Для frontend
+# For the frontend
 cp frontend/.env.example frontend/.env
 ```
 
-Откройте `backend/.env` и обязательно поправьте строку подключения — логин, пароль и имя базы должны совпадать с корневым `.env`:
+In `backend/.env`, set the connection string to match the username, password, and database name in the root `.env`:
 
 ```env
 DATABASE_URL="postgresql://postgres:secret@localhost:5432/sports_predictor?schema=public"
 ```
 
-В `frontend/.env` укажите адрес backend — обязательно вместе с `http://`:
+Set the backend address in `frontend/.env`, including `http://`:
 
 ```env
 VITE_API_BACKEND_URL=http://localhost:3000
 ```
 
-Описание всех переменных — в разделе [Переменные окружения](#notebook-переменные-окружения).
+See [Environment variables](#notebook-environment-variables) for the full list.
 
-**3. Создайте файл user.constants.ts**
+#### 3. Create the user.constants.ts file
 
-*Положите этот файл в backend/src/user/user.constants.ts*
+Save the following in backend/src/user/user.constants.ts to configure the JWT signing secret:
 
 ```TypeScript
 export const jwtToken = {
     secret: 'example-secret'
 };
 ```
-Этот файл нужен для подписи JWT-токенов.
 
-**4. Поднимите PostgreSQL и Redis**
+#### 4. Start PostgreSQL and Redis
 
 ```bash
 docker compose up -d
 ```
 
-**5. Примените миграции**
+#### 5. Apply migrations
 
 ```bash
 cd backend
@@ -203,7 +214,7 @@ bunx prisma migrate deploy
 bunx prisma generate
 ```
 
-**6. Запустите backend**
+#### 6. Start the backend
 
 ```bash
 cd backend
@@ -211,9 +222,9 @@ cd backend
 bun run start:dev
 ```
 
-Backend запустится на `http://localhost:3000`.
+The backend runs at `http://localhost:3000`.
 
-**7. Запустите frontend**
+#### 7. Start the frontend
 
 ```bash
 cd frontend
@@ -221,51 +232,54 @@ cd frontend
 bun run dev
 ```
 
-Приложение откроется на `http://localhost:5173`.
+Open the application at `http://localhost:5173`.
 
 
-## :green_book: Документация API
+<a id="green_book-api-documentation"></a>
 
-После запуска проекта документация Swagger доступна по адресу:
+## API documentation
+
+With the backend running, open Swagger at
 `http://localhost:3000/api/docs`
 
 
-## :notebook: Переменные окружения
+<a id="notebook-environment-variables"></a>
+
+## Environment variables
 
 ### `Sports-Predictor/.env`
 
-| Переменная          |  Назначение                         |
+| Variable            | Purpose                             |
 | ------------------- | ----------------------------------- |
-|`DB_NAME`            | Название базы данных в контейнере   |
-|`DB_USER`            | Имя пользователя БД                 |
-|`DB_PASSWORD`        | Пароль PostgreSQL                   |
+|`DB_NAME`            | Database name in the container      |
+|`DB_USER`            | Database username                   |
+|`DB_PASSWORD`        | PostgreSQL password                 |
 
 ### `backend/.env`
 
-| Переменная                          |  Назначение                                          |
+| Variable                            | Purpose                                              |
 | ----------------------------------- | ---------------------------------------------------- |
-|`DATABASE_URL`                       | Строка подключения к PostgreSQL                      |
-|`SMTP_HOST`                          | SMTP-сервер, например `smtp.gmail.com`               |
-|`SMTP_PORT`                          | Порт SMTP-сервера, например `587`                    |
-|`SMTP_EMAIL`                         | Адрес, с которого отправляются письма                |
-|`SMTP_PASSWORD`                      | **Пароль приложения** почты (для Gmail)              |
-|`URL_NPL_ACT_UPCOMING_MATCHES_2026`  | Страница Flashscore с расписанием NPL ACT            |
-|`URL_NPL_ACT_RESULT_2026`            | Страница Flashscore с результатами NPL ACT           |
-|`GEMINI_API_KEY`                     | Ключ Google Gemini API                               |
-|`PROMPT_GEMINI`                      | Промпт для Gemini, к нему дописывается JSON с матчами |
-|`PORT`                               | Порт backend, необязательно (по умолчанию `3000`)    |
+|`DATABASE_URL`                       | PostgreSQL connection string                         |
+|`SMTP_HOST`                          | SMTP server, e.g. `smtp.gmail.com`                    |
+|`SMTP_PORT`                          | SMTP server port, e.g. `587`                          |
+|`SMTP_EMAIL`                         | Sender email address                                 |
+|`SMTP_PASSWORD`                      | Email app password (for Gmail)                        |
+|`URL_NPL_ACT_UPCOMING_MATCHES_2026`  | Flashscore page with the NPL ACT schedule             |
+|`URL_NPL_ACT_RESULT_2026`            | Flashscore page with NPL ACT results                  |
+|`GEMINI_API_KEY`                     | Google Gemini API key                                |
+|`PROMPT_GEMINI`                      | Gemini prompt, with match data appended as JSON       |
+|`PORT`                               | Backend port, optional (defaults to `3000`)           |
 
 
 ### `frontend/.env`
 
-| Переменная              |  Назначение                                     |
+| Variable                | Purpose                                         |
 | ----------------------- | ----------------------------------------------- |
-|`VITE_API_BACKEND_URL`   | Адрес backend вместе с `http://`, например `http://localhost:3000` |
+|`VITE_API_BACKEND_URL`   | Backend address including `http://`, e.g. `http://localhost:3000` |
 
 
-## :bust_in_silhouette: Итого
+<a id="bust_in_silhouette-summary"></a>
 
-Этот проект я создал, чтобы на практике собрать full-stack приложение вокруг
-внешних данных: расписание и результаты матчей
-приходится забирать headless-браузером с чужого сайта, а прогнозы — получать
-от нейросети.
+## Why I built it
+
+I built this project to practice full-stack development with external data. It uses a headless browser to fetch match schedules and results from a third-party website, and an AI model to estimate outcomes.
